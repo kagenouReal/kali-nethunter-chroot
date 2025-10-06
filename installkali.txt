@@ -1,0 +1,129 @@
+#############################
+# 🐧 KALI-LINUX TERMUX (ROOT)
+# © Kagenou - 2025
+############################
+# 1. Update & install pkg
+pkg update -y && pkg upgrade -y
+pkg install tur-repo root-repo x11-repo -y
+pkg install neofetch busybox tsu wget termux-x11 pulseaudio -y
+
+# 2. Fix tsu termux
+sed -i 's|SU_BINARY_SEARCH=.*|SU_BINARY_SEARCH=("/system/xbin/su" "/system/bin/su" "/debug_ramdisk/su")|' $PREFIX/bin/tsu
+
+# 3. Download kali(arm64)
+wget https://kali.download/nethunter-images/current/rootfs/kali-nethunter-rootfs-full-arm64.tar.xz
+
+# 4. Enter root & ekstrak kali
+tsu
+tar xvf kali-nethunter-rootfs-full-arm64.tar.xz -C ..
+exit
+
+# 5. Create startkali.sh untuk launch
+cat <<'EOF' > startkali.sh
+#!/data/data/com.termux/files/usr/bin/bash
+if [ "$(whoami)" = "root" ]; then
+  echo -e "\nROOT DILARANG MASUK!!! \n"
+  exit 1
+fi
+BBX="$PREFIX/bin/busybox"
+KALIROOT="/data/data/com.termux/files/kali-arm64"
+TMPDIR="$KALIROOT/tmp"
+XDG_RUNTIME_DIR="$KALIROOT/tmp/XDG"
+pulseaudio --start --exit-idle-time=-1 --system=false \
+  --load="module-native-protocol-tcp auth-ip-acl=127.0.0.1 auth-anonymous=1" >/dev/null 2>&1 &
+su -c "$BBX mount -o remount,dev,suid /data"
+su -c "$BBX mount --bind /dev $KALIROOT/dev"
+su -c "$BBX mount --bind /dev/pts $KALIROOT/dev/pts"
+su -c "$BBX mount --bind /proc $KALIROOT/proc"
+su -c "$BBX mount --bind /sys $KALIROOT/sys"
+termux-x11 :0 -ac >/dev/null 2>&1 &
+X11_PID=$!
+su -c "$BBX chroot $KALIROOT /bin/su - root"
+kill -9 $X11_PID 2>/dev/null
+pulseaudio --kill
+su -c "umount -lf $KALIROOT/dev/pts" 2>/dev/null
+su -c "umount -lf $KALIROOT/dev" 2>/dev/null
+su -c "umount -lf $KALIROOT/proc" 2>/dev/null
+su -c "umount -lf $KALIROOT/sys" 2>/dev/null
+echo -e "\n © Kagenou - 2025"
+EOF
+
+# 6. Start kali
+sh startkali.sh
+
+# 7. Setup awal kali 
+mv /etc/resolv.conf /etc/resolv.conf.ori
+echo "nameserver 8.8.8.8" > /etc/resolv.conf
+mkdir /tmp/XDG
+chown kali:kali /tmp/XDG
+cd /var/lib
+echo $TMPDIR
+echo $DISPLAY
+echo $XDG_RUNTIME_DIR
+echo $XKB_CONFIG_DIR
+echo $XKB_CONFIG_ROOT
+cat <<'EOF' > login
+export DISPLAY=:0
+export TMPDIR=/tmp
+export XDG_RUNTIME_DIR=/tmp/XDG
+export XKB_CONFIG_ROOT=/usr/share/X11/xkb
+EOF
+cat <<'EOF' > logout
+pkill -9 -U "$(id -u)"
+EOF
+chmod a+x login
+chmod a+x logout
+cd /
+echo "source /var/lib/login" >> /home/kali/{.bashrc,.zshrc}
+echo "source /var/lib/logout" >> /home/kali/{.bash_logout,.zlogout}
+echo $DISPLAY
+source /var/lib/login
+echo $DISPLAY
+sudo apt update -y && sudo apt upgrade -y
+
+# 11. Dell pam_key
+sed -i '/pam_keyinit.so/d' /etc/pam.d/sshd || true
+sed -i '/pam_keyinit.so/d' /etc/pam.d/su-l || true
+echo "kali ALL=(ALL:ALL) NOPASSWD:ALL" >> /etc/sudoers
+exit
+
+# 12. Switch user dari root ke kali
+sed -i 's|/bin/su - root|/bin/su - kali|' startkali.sh
+echo 'alias kali="~/startkali.sh"' >> ~/.bashrc
+source ~/.bashrc
+chmod +x ~/startkali.sh
+
+# 13. Start kali 
+kali
+
+# 14. Tambah sound system
+echo 'export PULSE_SERVER=127.0.0.1' >> ~/.bashrc
+echo 'export PULSE_SERVER=127.0.0.1' >> ~/.zshrc
+
+# 15. Create desk launcher for gui
+mkdir /usr/local/bin
+sudo tee /usr/local/bin/desk > /dev/null <<'EOF'
+#!/bin/bash
+set -euo pipefail
+echo "Starting XFCE4 desktop..."
+eval $(dbus-launch --sh-syntax --exit-with-session)
+xfce4-session >/tmp/xfce4.log 2>&1 &
+XFCE_PID=$!
+echo "XFCE4 running in background. Switch to Termux:X11 to view the desktop."
+(
+  while pgrep -f "xfce4-session" >/dev/null 2>&1; do
+    sleep 2
+  done
+  pkill -9 -P 1 -u kali 2>/dev/null || true
+  pkill -9 -U "$(id -u)" 2>/dev/null || true
+) & disown
+EOF
+sudo chmod +x /usr/local/bin/desk
+echo 'export PATH=$PATH:/usr/local/bin' >> ~/.bashrc
+echo 'export PATH=$PATH:/usr/local/bin' >> ~/.zshrc
+###########################
+# ✅ DONE PAKCIK
+# Kali Nethunter
+# Username: kali | Password: 123
+# Start GUI just type: desk
+###########################
