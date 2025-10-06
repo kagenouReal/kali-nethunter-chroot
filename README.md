@@ -3,10 +3,10 @@
 
 ---
 ## ⛓️‍💥 In XFCE4 Desktop
-![XFCE4 Desktop](./images/example1.png)
+![XFCE4 Desktop](./example1.png)
 
 ## 🫆 In SSH Kali
-![SSH Kali](./images/example2.png)
+![SSH Kali](./example2.png)
 
 ## 📖 Overview
 This guide explains **how to install and run Kali Nethunter (full rootfs) with XFCE4 desktop** inside **Termux using chroot** on a **rooted Android device**.  
